@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>חידה קטנה</title>
+<style>
+  :root { --green:#25D366; --dark:#075E54; --bg:#ECE5DD; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    background: var(--bg);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .card {
+    background:#fff; border-radius:22px; width:100%; max-width:420px;
+    padding:28px 22px 26px; text-align:center;
+    box-shadow:0 8px 30px rgba(0,0,0,.08);
+  }
+  h1 { margin:0 0 6px; font-size:28px; color:var(--dark); }
+  .q { margin:0 0 24px; font-size:19px; color:#333; line-height:1.5; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  button.opt {
+    position:relative; border:3px solid transparent; background:#f4f4f4;
+    border-radius:20px; aspect-ratio:1/1; font-size:46px; cursor:pointer;
+    transition:transform .12s, border-color .12s, background .12s;
+  }
+  button.opt:active { transform:scale(.92); }
+  button.opt.selected { border-color:var(--green); background:#e9fbef; transform:scale(1.06); }
+  .locked button.opt:not(.selected) { opacity:.35; }
+  .check {
+    position:absolute; top:-10px; left:-10px; width:34px; height:34px;
+    border-radius:50%; background:var(--green); color:#fff;
+    font-size:20px; line-height:34px; font-weight:bold;
+    transform:scale(0); box-shadow:0 2px 6px rgba(0,0,0,.2);
+  }
+  .selected .check { animation:pop .35s cubic-bezier(.3,1.6,.5,1) forwards; }
+  @keyframes pop { 0%{transform:scale(0)} 100%{transform:scale(1)} }
+  #back {
+    display:none; margin-top:24px; font-size:16px; color:#555;
+  }
+  #back a {
+    display:inline-block; margin-top:10px; padding:12px 22px; border-radius:30px;
+    background:var(--green); color:#fff; text-decoration:none; font-weight:600;
+  }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <h1 id="hello">שלום שמעון 👋</h1>
+  <p class="q" id="question">מה אני הכי אוהב לאכול בבוקר?</p>
+
+  <div class="grid" id="grid">
+    <button class="opt" data-v="apple">🍎<span class="check">✓</span></button>
+    <button class="opt" data-v="orange">🍊<span class="check">✓</span></button>
+    <button class="opt" data-v="banana">🍌<span class="check">✓</span></button>
+    <button class="opt" data-v="money">🤑<span class="check">✓</span></button>
+    <button class="opt" data-v="laugh">😂<span class="check">✓</span></button>
+    <button class="opt" data-v="love">😍<span class="check">✓</span></button>
+  </div>
+
+  <div id="back">
+    נבחר ✓ אפשר לחזור לוואטסאפ
+    <br><a href="whatsapp://">חזרה לוואטסאפ</a>
+  </div>
+</div>
+
+<script>
+  // ===== הגדרות =====
+  // אפשר גם לשנות דרך הקישור, למשל:  ...html?name=דנה&q=מה הפרי שלי?
+  var DELAY_MS = 200;               // השהיה לפני החזרה (0.2 שנייה)
+  var TRY_OPEN_WHATSAPP = true;     // אם אין "אחורה" — לנסות לפתוח את וואטסאפ
+
+  var p = new URLSearchParams(location.search);
+  if (p.get('name')) document.getElementById('hello').textContent = 'שלום ' + p.get('name') + ' 👋';
+  if (p.get('q'))    document.getElementById('question').textContent = p.get('q');
+
+  var grid = document.getElementById('grid');
+  var done = false;
+
+  grid.addEventListener('click', function (e) {
+    var btn = e.target.closest('button.opt');
+    if (!btn || done) return;
+    done = true;
+    btn.classList.add('selected');
+    grid.classList.add('locked');
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    setTimeout(goBack, DELAY_MS);
+  });
+
+  function goBack() {
+    var before = location.href;
+
+    // 1. אם יש דף קודם בהיסטוריה — חוזרים אליו
+    if (history.length > 1) history.back();
+
+    // 2. מנסים לסגור את הלשונית (עובד רק בחלק מהדפדפנים)
+    setTimeout(function () {
+      if (document.hidden || location.href !== before) return;
+      try { window.close(); } catch (e) {}
+
+      // 3. עדיין כאן? פותחים את וואטסאפ ומציגים כפתור חזרה
+      setTimeout(function () {
+        if (document.hidden) return;
+        document.getElementById('back').style.display = 'block';
+        if (TRY_OPEN_WHATSAPP) location.href = 'whatsapp://';
+      }, 150);
+    }, 150);
+  }
+</script>
+</body>
+</html>
