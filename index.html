@@ -38,13 +38,6 @@
   }
   .selected .check { animation:pop .35s cubic-bezier(.3,1.6,.5,1) forwards; }
   @keyframes pop { 0%{transform:scale(0)} 100%{transform:scale(1)} }
-  #back {
-    display:none; margin-top:24px; font-size:16px; color:#555;
-  }
-  #back a {
-    display:inline-block; margin-top:10px; padding:12px 22px; border-radius:30px;
-    background:var(--green); color:#fff; text-decoration:none; font-weight:600;
-  }
 </style>
 </head>
 <body>
@@ -60,18 +53,12 @@
     <button class="opt" data-v="laugh">😂<span class="check">✓</span></button>
     <button class="opt" data-v="love">😍<span class="check">✓</span></button>
   </div>
-
-  <div id="back">
-    נבחר ✓ אפשר לחזור לוואטסאפ
-    <br><a href="whatsapp://">חזרה לוואטסאפ</a>
-  </div>
 </div>
 
 <script>
   // ===== הגדרות =====
   // אפשר גם לשנות דרך הקישור, למשל:  ...html?name=דנה&q=מה הפרי שלי?
-  var DELAY_MS = 200;               // השהיה לפני החזרה (0.2 שנייה)
-  var TRY_OPEN_WHATSAPP = true;     // אם אין "אחורה" — לנסות לפתוח את וואטסאפ
+  var DELAY_MS = 200;               // השהיה לפני "אחורה" (0.2 שנייה), כדי שהוי הירוק יוצג
 
   var p = new URLSearchParams(location.search);
   if (p.get('name')) document.getElementById('hello').textContent = 'שלום ' + p.get('name') + ' 👋';
@@ -91,24 +78,9 @@
     setTimeout(goBack, DELAY_MS);
   });
 
+  // "אחורה" רגיל של הדפדפן — בלי שום מנגנון גיבוי
   function goBack() {
-    var before = location.href;
-
-    // 1. אם יש דף קודם בהיסטוריה — חוזרים אליו
-    if (history.length > 1) history.back();
-
-    // 2. מנסים לסגור את הלשונית (עובד רק בחלק מהדפדפנים)
-    setTimeout(function () {
-      if (document.hidden || location.href !== before) return;
-      try { window.close(); } catch (e) {}
-
-      // 3. עדיין כאן? פותחים את וואטסאפ ומציגים כפתור חזרה
-      setTimeout(function () {
-        if (document.hidden) return;
-        document.getElementById('back').style.display = 'block';
-        if (TRY_OPEN_WHATSAPP) location.href = 'whatsapp://';
-      }, 150);
-    }, 150);
+    history.back();
   }
 </script>
 </body>
