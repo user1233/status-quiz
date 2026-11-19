@@ -53,7 +53,6 @@
     <button class="opt" data-v="laugh">😂<span class="check">✓</span></button>
     <button class="opt" data-v="love">😍<span class="check">✓</span></button>
   </div>
-  <div id="dbg" style="display:none;margin-top:18px;font-size:12px;color:#999;direction:ltr"></div>
 </div>
 
 <script>
@@ -80,20 +79,18 @@
   });
 
   // 1. "אחורה" רגיל של הדפדפן
-  // 2. אם אחרי 300ms עדיין כאן — מנסים window.close()
+  // 2. אם אחרי 300ms עדיין כאן — פותחים את אפליקציית ווטסאפ
+  var IS_ANDROID = /Android/i.test(navigator.userAgent);
+  var WHATSAPP_URL = IS_ANDROID
+    ? 'intent://#Intent;scheme=whatsapp;package=com.whatsapp;end'
+    : 'whatsapp://';
+
   function goBack() {
     var before = location.href;
     history.back();
     setTimeout(function () {
       if (document.hidden || location.href !== before) return;
-      window.close();
-      // שורת בדיקה קטנה: אם רואים אותה — גם הסגירה נחסמה
-      setTimeout(function () {
-        if (document.hidden) return;
-        var d = document.getElementById('dbg');
-        d.textContent = 'history.length=' + history.length + ' · close נחסם';
-        d.style.display = 'block';
-      }, 300);
+      location.href = WHATSAPP_URL;
     }, 300);
   }
 </script>
