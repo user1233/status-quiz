@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>חידה קטנה</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#075E54">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root { --green:#25D366; --dark:#075E54; --bg:#ECE5DD; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -111,6 +115,20 @@
   }
   .pill.small { font-size:12px; color:#111; background:transparent; padding:3px 6px; font-weight:600; }
   .pill.hl { background:rgba(37,211,102,.18); }
+
+  /* הצעת התקנה (אנדרואיד בדפדפן בלבד) */
+  #install {
+    display:none; margin-top:18px; padding:14px 14px 16px; border-radius:16px;
+    background:#e9fbef; border:1px solid #bfeccf; text-align:center;
+  }
+  #install .t { font-size:15px; color:#0b4d43; font-weight:600; line-height:1.4; }
+  #install .s { font-size:13px; color:#3d5c56; margin-top:6px; line-height:1.5; }
+  #installBtn {
+    margin-top:10px; border:0; border-radius:30px; padding:11px 22px;
+    background:var(--dark); color:#fff; font-size:15px; font-weight:600; cursor:pointer;
+  }
+  #installSteps { display:none; }
+  #dbg { display:none; margin-top:16px; font-size:11px; color:#999; direction:ltr; word-break:break-all; }
 </style>
 </head>
 <body>
@@ -126,6 +144,7 @@
     <button class="opt" data-v="laugh">😂<span class="check">✓</span></button>
     <button class="opt" data-v="love">😍<span class="check">✓</span></button>
   </div>
+  <div id="dbg"></div>
 </div>
 
 <div id="overlay" aria-live="polite">
@@ -134,13 +153,23 @@
     <h2>תשובתך התקבלה!</h2>
     <p class="sub" id="sub">עכשיו לחץ "אחורה" כדי לחזור לווטסאפ</p>
     <div class="ways" id="ways"></div>
+
+    <div id="install">
+      <div class="t" id="installTitle">רוצה שבפעם הבאה זה יחזור לווטסאפ לבד?</div>
+      <div class="s" id="installSub">התקן את החידה כאפליקציה — זה לוקח שנייה</div>
+      <button id="installBtn" type="button">התקן אפליקציה</button>
+      <div class="s" id="installSteps">
+        בתפריט של כרום <b>⋮</b> (למעלה) ← <b>הוסף למסך הבית</b> / <b>התקן אפליקציה</b>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
   // ===== הגדרות =====
   // אפשר לשנות דרך הקישור, למשל:  ...?name=דנה&q=מה הפרי שלי?
-  // לבדיקה מהמחשב אפשר לכפות סוג טלפון:  ?os=android  /  ?os=samsung  /  ?os=ios
+  // לבדיקה מהמחשב אפשר לכפות סוג טלפון:  ?os=android  /  ?os=samsung  /  ?os=ios  /  ?os=pwa
+  // שורת מצב לבדיקה:  ?debug=1
   var DELAY_MS = 450;   // השהיה קצרה כדי שהוי הירוק ייראה לפני שהחלונית עולה
 
   var p = new URLSearchParams(location.search);
@@ -233,9 +262,69 @@
     ways.innerHTML = '';
   }
 
+  // ===== PWA =====
+  // האם הדף רץ כאפליקציה מותקנת (ולא בתוך כרום)?
+  var isPWA = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) ||
+              navigator.standalone === true || forced === 'pwa';
+  if (forced === 'pwa') isAndroid = true;
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+
+  // כרום שולח את האירוע הזה כשאפשר להציע התקנה בלחיצה אחת
+  var installEvent = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    installEvent = e;
+    updateInstallBox();
+    debug();
+  });
+  window.addEventListener('appinstalled', function () {
+    installEvent = null;
+    document.getElementById('installTitle').textContent = 'הותקן ✓';
+    document.getElementById('installSub').innerHTML =
+      'מעכשיו: חזור לסטטוס ולחץ שוב על הקישור — הוא ייפתח באפליקציה, ואחרי הבחירה תחזור לווטסאפ לבד.';
+    document.getElementById('installBtn').style.display = 'none';
+    document.getElementById('installSteps').style.display = 'none';
+  });
+
+  document.getElementById('installBtn').addEventListener('click', function () {
+    if (!installEvent) return;
+    installEvent.prompt();
+    installEvent.userChoice.then(function () { installEvent = null; updateInstallBox(); });
+  });
+
+  function updateInstallBox() {
+    var box = document.getElementById('install');
+    // מציעים התקנה רק באנדרואיד, ורק כשהדף פתוח בדפדפן (לא באפליקציה עצמה)
+    if (!isAndroid || isPWA) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    var hasPrompt = !!installEvent;
+    document.getElementById('installBtn').style.display = hasPrompt ? 'inline-block' : 'none';
+    document.getElementById('installSteps').style.display = hasPrompt ? 'none' : 'block';
+  }
+
+  // שורת בדיקה — מופיעה רק עם ?debug=1 בקישור
+  function debug() {
+    if (p.get('debug') !== '1') return;
+    var d = document.getElementById('dbg');
+    d.style.display = 'block';
+    d.textContent = 'os=' + (isIOS ? 'ios' : isAndroid ? (isSamsung ? 'samsung' : 'android') : 'other') +
+      ' | pwa=' + isPWA + ' | history=' + history.length +
+      ' | installPrompt=' + !!installEvent + ' | sw=' + ('serviceWorker' in navigator);
+  }
+  debug();
+
   // ===== לחיצה על אימוג'י =====
   var grid = document.getElementById('grid');
   var done = false;
+
+  function showOverlay() {
+    renderWays();
+    updateInstallBox();
+    document.getElementById('overlay').classList.add('show');
+  }
 
   grid.addEventListener('click', function (e) {
     var btn = e.target.closest('button.opt');
@@ -245,9 +334,15 @@
     grid.classList.add('locked');
     if (navigator.vibrate) navigator.vibrate(30);
 
-    renderWays();
     setTimeout(function () {
-      document.getElementById('overlay').classList.add('show');
+      if (isPWA && isAndroid) {
+        // באפליקציה המותקנת: סוגרים את עצמנו → אנדרואיד מחזיר לווטסאפ
+        window.close();
+        // אם הסגירה נחסמה — מציגים את ההנחיה כרגיל
+        setTimeout(function () { if (!document.hidden) showOverlay(); }, 500);
+      } else {
+        showOverlay();
+      }
     }, DELAY_MS);
   });
 </script>
