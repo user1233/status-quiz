@@ -38,6 +38,79 @@
   }
   .selected .check { animation:pop .35s cubic-bezier(.3,1.6,.5,1) forwards; }
   @keyframes pop { 0%{transform:scale(0)} 100%{transform:scale(1)} }
+
+  /* ===== חלונית "לחץ אחורה" ===== */
+  #overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.45);
+    display:flex; align-items:flex-end; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .25s;
+    z-index:10;
+  }
+  #overlay.show { opacity:1; pointer-events:auto; }
+  .sheet {
+    background:#fff; width:100%; max-width:460px;
+    border-radius:24px 24px 0 0; padding:22px 18px 28px;
+    text-align:center; transform:translateY(100%);
+    transition:transform .35s cubic-bezier(.2,.9,.3,1);
+  }
+  #overlay.show .sheet { transform:translateY(0); }
+  .done-badge {
+    width:56px; height:56px; margin:0 auto 10px; border-radius:50%;
+    background:var(--green); color:#fff; font-size:30px; line-height:56px; font-weight:bold;
+  }
+  .sheet h2 { margin:0 0 4px; font-size:22px; color:var(--dark); }
+  .sheet .sub { margin:0 0 18px; font-size:16px; color:#444; }
+  .ways { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .way {
+    flex:1 1 170px; max-width:220px; background:#f6f7f7; border-radius:16px;
+    padding:14px 10px 12px;
+  }
+  .way .lbl { font-size:14px; color:#333; margin-top:10px; line-height:1.4; }
+  .or { align-self:center; font-size:13px; color:#888; }
+
+  /* פס כפתורי ניווט של אנדרואיד */
+  .navbar {
+    direction:ltr; background:#1f1f1f; border-radius:12px; height:52px;
+    display:flex; align-items:center; justify-content:space-around;
+  }
+  .navbar svg { width:26px; height:26px; }
+  .navbtn { position:relative; width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:50%; }
+  .navbtn.hl { background:rgba(37,211,102,.25); }
+  .navbtn.hl::after, .pill.hl::after {
+    content:""; position:absolute; inset:-4px; border-radius:inherit;
+    border:2px solid var(--green); animation:pulse 1.4s ease-out infinite;
+  }
+  @keyframes pulse { 0%{transform:scale(.85);opacity:1} 100%{transform:scale(1.35);opacity:0} }
+
+  /* החלקה מהקצה (ניווט במחוות) */
+  .phone {
+    position:relative; width:84px; height:120px; margin:0 auto;
+    border:3px solid #1f1f1f; border-radius:16px; background:#fff; overflow:hidden;
+  }
+  .phone .homebar { position:absolute; bottom:6px; left:50%; width:30px; height:4px; margin-left:-15px; background:#1f1f1f; border-radius:2px; }
+  .finger {
+    position:absolute; top:46px; right:-6px; width:20px; height:20px; border-radius:50%;
+    background:rgba(37,211,102,.85); box-shadow:0 0 0 4px rgba(37,211,102,.25);
+    animation:swipe 1.6s ease-in-out infinite;
+  }
+  .arrow-hint {
+    position:absolute; top:48px; left:10px; font-size:16px; color:var(--green); font-weight:bold;
+    animation:fade 1.6s ease-in-out infinite;
+  }
+  @keyframes swipe { 0%{transform:translateX(0);opacity:0} 15%{opacity:1} 70%{transform:translateX(-40px);opacity:1} 100%{transform:translateX(-40px);opacity:0} }
+  @keyframes fade { 0%,40%{opacity:0} 70%{opacity:1} 100%{opacity:0} }
+
+  /* כפתורים עליונים באייפון */
+  .topbar {
+    direction:ltr; background:#f2f2f7; border:1px solid #ddd; border-radius:12px;
+    height:52px; display:flex; align-items:center; padding:0 10px;
+  }
+  .pill {
+    position:relative; border-radius:10px; padding:5px 10px; font-size:15px;
+    color:#007AFF; background:#fff; font-weight:600; white-space:nowrap;
+  }
+  .pill.small { font-size:12px; color:#111; background:transparent; padding:3px 6px; font-weight:600; }
+  .pill.hl { background:rgba(37,211,102,.18); }
 </style>
 </head>
 <body>
@@ -55,15 +128,112 @@
   </div>
 </div>
 
+<div id="overlay" aria-live="polite">
+  <div class="sheet">
+    <div class="done-badge">✓</div>
+    <h2>תשובתך התקבלה!</h2>
+    <p class="sub" id="sub">עכשיו לחץ "אחורה" כדי לחזור לווטסאפ</p>
+    <div class="ways" id="ways"></div>
+  </div>
+</div>
+
 <script>
   // ===== הגדרות =====
-  // אפשר גם לשנות דרך הקישור, למשל:  ...html?name=דנה&q=מה הפרי שלי?
-  var DELAY_MS = 200;               // השהיה לפני "אחורה" (0.2 שנייה), כדי שהוי הירוק יוצג
+  // אפשר לשנות דרך הקישור, למשל:  ...?name=דנה&q=מה הפרי שלי?
+  // לבדיקה מהמחשב אפשר לכפות סוג טלפון:  ?os=android  /  ?os=samsung  /  ?os=ios
+  var DELAY_MS = 450;   // השהיה קצרה כדי שהוי הירוק ייראה לפני שהחלונית עולה
 
   var p = new URLSearchParams(location.search);
   if (p.get('name')) document.getElementById('hello').textContent = 'שלום ' + p.get('name') + ' 👋';
   if (p.get('q'))    document.getElementById('question').textContent = p.get('q');
 
+  // ===== זיהוי סוג הטלפון =====
+  var ua = navigator.userAgent;
+  var isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  var isAndroid = /Android/i.test(ua);
+  var isSamsung = /SamsungBrowser|SM-[A-Z0-9]/i.test(ua);
+  var forced = (p.get('os') || '').toLowerCase();
+  if (forced) {
+    isIOS = forced === 'ios';
+    isAndroid = forced === 'android' || forced === 'samsung';
+    isSamsung = forced === 'samsung';
+  }
+  // בכרום האנדרואידי החדש הדגם מוסתר ב-User-Agent, אז שואלים את הדפדפן ישירות
+  if (isAndroid && !isSamsung && !forced && navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+    navigator.userAgentData.getHighEntropyValues(['model']).then(function (v) {
+      if (/^SM-/i.test(v.model || '')) { isSamsung = true; renderWays(); }
+    }).catch(function () {});
+  }
+
+  // ===== אייקונים =====
+  var ICON = {
+    // אנדרואיד רגיל (פיקסל וכו'): ◁ ● ■
+    backTri:  '<svg viewBox="0 0 24 24"><path d="M17 4 L6 12 L17 20 Z" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/></svg>',
+    homeDot:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="#fff" stroke-width="2.2"/></svg>',
+    recentSq: '<svg viewBox="0 0 24 24"><rect x="5.5" y="5.5" width="13" height="13" rx="2" fill="none" stroke="#fff" stroke-width="2.2"/></svg>',
+    // סמסונג: ||| ▢ <
+    backChev: '<svg viewBox="0 0 24 24"><path d="M15 4 L7 12 L15 20" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    homeRnd:  '<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="5" fill="none" stroke="#fff" stroke-width="2.2"/></svg>',
+    recentBars:'<svg viewBox="0 0 24 24"><path d="M7 6v12M12 6v12M17 6v12" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>'
+  };
+
+  function navbarHTML() {
+    if (isSamsung) {
+      // בסמסונג ברירת המחדל: ||| ▢ <  (אחורה בצד ימין)
+      return '<div class="navbar">' +
+        '<div class="navbtn">' + ICON.recentBars + '</div>' +
+        '<div class="navbtn">' + ICON.homeRnd + '</div>' +
+        '<div class="navbtn hl">' + ICON.backChev + '</div>' +
+      '</div>';
+    }
+    return '<div class="navbar">' +
+      '<div class="navbtn hl">' + ICON.backTri + '</div>' +
+      '<div class="navbtn">' + ICON.homeDot + '</div>' +
+      '<div class="navbtn">' + ICON.recentSq + '</div>' +
+    '</div>';
+  }
+
+  var GESTURE_HTML =
+    '<div class="phone"><span class="arrow-hint">‹</span><span class="finger"></span><span class="homebar"></span></div>';
+
+  function renderWays() {
+    var ways = document.getElementById('ways');
+    var sub = document.getElementById('sub');
+
+    if (isIOS) {
+      sub.textContent = 'עכשיו חזור לווטסאפ בלחיצה על אחד מאלה בראש המסך:';
+      ways.innerHTML =
+        '<div class="way">' +
+          '<div class="topbar"><span class="pill small hl">◀ WhatsApp</span></div>' +
+          '<div class="lbl">אם מופיע למעלה בפינה<br><b>◀ WhatsApp</b> — לחץ עליו</div>' +
+        '</div>' +
+        '<div class="or">או</div>' +
+        '<div class="way">' +
+          '<div class="topbar"><span class="pill hl">סיום</span></div>' +
+          '<div class="lbl">אם מופיע למעלה<br><b>סיום</b> / <b>Done</b> / <b>✕</b> — לחץ עליו</div>' +
+        '</div>';
+      return;
+    }
+
+    if (isAndroid) {
+      sub.textContent = 'עכשיו לחץ "אחורה" בטלפון כדי לחזור לווטסאפ:';
+      ways.innerHTML =
+        '<div class="way">' + navbarHTML() +
+          '<div class="lbl">אם יש לך כפתורים למטה —<br>לחץ על כפתור <b>אחורה</b> ' + (isSamsung ? '(<b>&lt;</b>)' : '(<b>◁</b>)') + '</div>' +
+        '</div>' +
+        '<div class="or">או</div>' +
+        '<div class="way">' + GESTURE_HTML +
+          '<div class="lbl">אם אין כפתורים —<br><b>החלק מקצה המסך פנימה</b><br>(מימין או משמאל)</div>' +
+        '</div>';
+      return;
+    }
+
+    // מחשב / לא מזוהה
+    sub.textContent = 'אפשר לחזור לווטסאפ עכשיו 🙂';
+    ways.innerHTML = '';
+  }
+
+  // ===== לחיצה על אימוג'י =====
   var grid = document.getElementById('grid');
   var done = false;
 
@@ -75,24 +245,11 @@
     grid.classList.add('locked');
     if (navigator.vibrate) navigator.vibrate(30);
 
-    setTimeout(goBack, DELAY_MS);
-  });
-
-  // 1. "אחורה" רגיל של הדפדפן
-  // 2. אם אחרי 300ms עדיין כאן — פותחים את אפליקציית ווטסאפ
-  var IS_ANDROID = /Android/i.test(navigator.userAgent);
-  var WHATSAPP_URL = IS_ANDROID
-    ? 'intent://#Intent;scheme=whatsapp;package=com.whatsapp;end'
-    : 'whatsapp://';
-
-  function goBack() {
-    var before = location.href;
-    history.back();
+    renderWays();
     setTimeout(function () {
-      if (document.hidden || location.href !== before) return;
-      location.href = WHATSAPP_URL;
-    }, 300);
-  }
+      document.getElementById('overlay').classList.add('show');
+    }, DELAY_MS);
+  });
 </script>
 </body>
 </html>
